@@ -1,6 +1,6 @@
 import { createSignal, Show, For } from 'solid-js';
 import { createEvent } from './supabaseClient';
-import SolidMarkdown from 'solid-markdown';
+import { Markdown as SolidMarkdown } from 'solid-markdown';
 
 function App() {
   const [story, setStory] = createSignal('');
