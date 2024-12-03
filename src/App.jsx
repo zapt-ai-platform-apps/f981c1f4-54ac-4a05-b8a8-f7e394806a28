@@ -1,6 +1,6 @@
 import { createSignal, Show, For } from 'solid-js';
 import { createEvent } from './supabaseClient';
-import { Markdown as SolidMarkdown } from 'solid-markdown';
+import SolidMarkdown from 'solid-markdown';
 
 function App() {
   const [story, setStory] = createSignal('');
@@ -21,11 +21,12 @@ function App() {
     setImages([]);
     try {
       const result = await createEvent('chatgpt_request', {
+        app_id: import.meta.env.VITE_PUBLIC_APP_ID,
         prompt: `توليد قصة كرتونية للأطفال حول: ${prompt()} . الرجاء تقديم القصة في تنسيق JSON مع البنية التالية: { "story": "نص القصة" }`,
         response_type: 'json',
       });
       setStory(result.story);
-      generateImages(result.story);
+      await generateImages(result.story);
     } catch (err) {
       console.error('Error generating story:', err);
       setError('حدث خطأ أثناء توليد القصة');
@@ -38,13 +39,14 @@ function App() {
     setLoadingImages(true);
     try {
       const storyParts = storyText.split(/[.\n]/).filter((part) => part.trim() !== '');
-      const imagesPromises = storyParts.map(async (part) => {
+      const imagesArray = [];
+      for (const part of storyParts) {
         const imageResult = await createEvent('generate_image', {
+          app_id: import.meta.env.VITE_PUBLIC_APP_ID,
           prompt: `رسم كرتوني للمشهد التالي: ${part}`,
         });
-        return imageResult;
-      });
-      const imagesArray = await Promise.all(imagesPromises);
+        imagesArray.push(imageResult);
+      }
       setImages(imagesArray);
     } catch (err) {
       console.error('Error generating images:', err);
@@ -55,7 +57,7 @@ function App() {
   };
 
   return (
-    <div class="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 p-4">
+    <div class="h-full bg-gradient-to-br from-blue-100 to-purple-100 p-4 text-gray-800">
       <div class="max-w-3xl mx-auto">
         <h1 class="text-3xl font-bold text-center text-purple-700 mb-6">توليد قصة كرتونية</h1>
         <div class="mb-4 text-center">
@@ -64,15 +66,15 @@ function App() {
             placeholder="أدخل فكرة القصة هنا"
             value={prompt()}
             onInput={(e) => setPrompt(e.target.value)}
-            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent box-border"
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent box-border text-gray-800"
           />
         </div>
         <div class="flex justify-center space-x-4 mb-6">
           <button
             onClick={generateStory}
             disabled={loadingStory()}
-            class={`px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer ${
-              loadingStory() ? 'opacity-50 cursor-not-allowed' : ''
+            class={`px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out transform hover:scale-105 ${
+              loadingStory() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
             }`}
           >
             {loadingStory() ? '...جاري التوليد' : 'توليد القصة'}
@@ -84,7 +86,7 @@ function App() {
         <Show when={story()}>
           <div class="bg-white p-6 rounded-lg shadow-md mb-6">
             <h2 class="text-2xl font-bold text-purple-700 mb-4">القصة</h2>
-            <SolidMarkdown children={story()} />
+            <SolidMarkdown>{story()}</SolidMarkdown>
           </div>
         </Show>
         <Show when={loadingImages()}>
